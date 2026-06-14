@@ -1,6 +1,6 @@
 {
   "name": "@dloizides/pwa-sw",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Config-driven PWA service worker generator + manifest builder. Ships the fixed network-first (v2) caching strategy with a versioned cache and a purge-on-publish message handler.",
   "keywords": [
     "pwa",
