@@ -66,6 +66,16 @@ function isAdminApiRequest(url) {
   return false;
 }
 
+/**
+ * A cacheable request over a supported scheme. The Cache API only accepts
+ * http/https — a chrome-extension:, safari-extension:, data: or other-scheme
+ * request throws on cache.put ("Request scheme '...' is unsupported"), so those
+ * must skip the SW entirely and pass through to the network.
+ */
+function isHttpRequest(url) {
+  return url.indexOf('http:') === 0 || url.indexOf('https:') === 0;
+}
+
 /** A static asset (cache-first) based on file extension. */
 function isStaticAsset(url) {
   var pathname = new URL(url).pathname.toLowerCase();
@@ -175,6 +185,7 @@ self.addEventListener('message', function(event) {
 self.addEventListener('fetch', function(event) {
   var request = event.request;
   if (request.method !== 'GET') return;
+  if (!isHttpRequest(request.url)) return;
   if (isAdminApiRequest(request.url)) return;
   if (isPublicApiRequest(request.url)) {
     networkFirst(event);

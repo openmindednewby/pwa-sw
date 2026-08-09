@@ -45,6 +45,15 @@ describe('generateServiceWorker', () => {
     expect(sw).toContain('self.clients.claim();');
   });
 
+  it('skips non-http(s) schemes (e.g. chrome-extension) before caching', () => {
+    // The Cache API rejects cache.put for chrome-extension:/data: etc. — the fetch
+    // handler must bail on any non-http(s) scheme so those pass through to the network.
+    expect(sw).toContain('function isHttpRequest(url)');
+    expect(sw).toContain("url.indexOf('http:') === 0");
+    expect(sw).toContain("url.indexOf('https:') === 0");
+    expect(sw).toContain('if (!isHttpRequest(request.url)) return;');
+  });
+
   it('never caches admin/auth API', () => {
     expect(sw).toContain('function isAdminApiRequest(url)');
     expect(sw).toContain("pathname.indexOf('/realms/')");

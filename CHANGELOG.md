@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.2
+
+- Fix: the generated service worker now bails out of the `fetch` handler for any
+  non-http(s) scheme (`chrome-extension:`, `safari-extension:`, `data:`, …) before
+  routing to `cacheFirst`/`networkFirst`. The Cache API rejects `cache.put` for those
+  schemes, which surfaced as an uncaught `TypeError: Request scheme 'chrome-extension'
+  is unsupported` whenever a browser extension issued an extension-scheme GET that
+  matched a static-asset extension. Adds an `isHttpRequest(url)` guard + test.
+
 ## 1.0.0 (unreleased)
 
 - Initial extraction (task #186). Converges the diverged app service workers onto
