@@ -4,6 +4,7 @@ import { isAbsolute, join, resolve } from 'node:path';
 
 import { buildManifest, type ManifestConfig } from './buildManifest';
 import { generateServiceWorker } from './generateServiceWorker';
+import { generateRegistration } from './generateRegistration';
 import type { ServiceWorkerConfig } from './config';
 
 /**
@@ -47,10 +48,30 @@ export function run(argv: string[]): number {
     mkdirSync(outDir, { recursive: true });
   }
 
-  const swSource = generateServiceWorker(mod.serviceWorker);
+  // Stamp a UNIQUE per-build version so every deploy ships a byte-different SW (the trigger the
+  // browser needs to install the update). Prefer an explicit config value, then a CI-provided
+  // PWA_BUILD_VERSION (e.g. the git sha), else a wall-clock token. The config value wins so a caller
+  // can pin it; otherwise it changes every run.
+  const swConfig: ServiceWorkerConfig = {
+    ...mod.serviceWorker,
+    buildVersion:
+      mod.serviceWorker.buildVersion && mod.serviceWorker.buildVersion.trim() !== ''
+        ? mod.serviceWorker.buildVersion
+        : process.env.PWA_BUILD_VERSION && process.env.PWA_BUILD_VERSION.trim() !== ''
+          ? process.env.PWA_BUILD_VERSION.trim()
+          : Date.now().toString(36),
+  };
+
+  const swSource = generateServiceWorker(swConfig);
   const swPath = join(outDir, 'service-worker.js');
   writeFileSync(swPath, swSource, 'utf8');
-  console.log(`pwa-sw-gen: wrote ${swPath}`);
+  console.log(`pwa-sw-gen: wrote ${swPath} (build ${swConfig.buildVersion})`);
+
+  // The auto-updating registration snippet, from the SAME config (scope / swUrl / interval).
+  const regSource = generateRegistration(swConfig);
+  const regPath = join(outDir, 'sw-register.js');
+  writeFileSync(regPath, regSource, 'utf8');
+  console.log(`pwa-sw-gen: wrote ${regPath}`);
 
   if (mod.manifest) {
     const manifest = buildManifest(mod.manifest);

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0
+- Auto-update: `generateServiceWorker` now stamps a per-build `BUILD_VERSION` into the worker (and the effective cache names), so every deploy ships a byte-different SW — the trigger the browser needs to install the update; the activate handler evicts every other build's caches.
+- New `generateRegistration` + `sw-register.js` emitted by the CLI: registers with `updateViaCache:'none'`, polls for a new worker on load / interval / refocus, and reloads once on `controllerchange` (guarded against first-install + loops) so an already-open tab picks up a redeploy automatically.
+- Config: added `buildVersion`, `scope`, `swUrl`, `updateCheckIntervalMs`. CLI injects `PWA_BUILD_VERSION` (or a timestamp) when unset and writes `sw-register.js` alongside `service-worker.js`.
+
+
 ## 1.0.2
 
 - Fix: the generated service worker now bails out of the `fetch` handler for any

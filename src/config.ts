@@ -33,6 +33,32 @@ export interface ServiceWorkerConfig {
    * web set (js/css/images/fonts).
    */
   staticExtensions?: string[];
+  /**
+   * A UNIQUE per-BUILD token stamped into the generated SW (and appended to the
+   * effective cache names) so that EVERY deploy produces a byte-different
+   * `service-worker.js`. This is what makes auto-update work: the browser only
+   * installs a new SW when the SW file's bytes change, so without a per-build
+   * token a redeploy leaves an already-open tab running the OLD code. The CLI
+   * injects `process.env.PWA_BUILD_VERSION` or a timestamp when this is absent;
+   * tests pass an explicit value for determinism. Defaults to `'dev'`.
+   */
+  buildVersion?: string;
+  /**
+   * The scope the registration snippet registers the SW under (the app's base
+   * path), e.g. `/app/`. Defaults to `/`. Used only by `generateRegistration`.
+   */
+  scope?: string;
+  /**
+   * The URL the SW is served from, e.g. `/app/service-worker.js`. Defaults to
+   * `<scope>service-worker.js`. Used only by `generateRegistration`.
+   */
+  swUrl?: string;
+  /**
+   * How often (ms) the registration polls for a new SW version (in addition to
+   * on-load + on-tab-refocus). `0` disables the interval. Defaults to 60000.
+   * Used only by `generateRegistration`.
+   */
+  updateCheckIntervalMs?: number;
 }
 
 /** Default static-asset extensions (cache-first). */
@@ -52,6 +78,20 @@ export const DEFAULT_STATIC_EXTENSIONS: readonly string[] = [
 /** Default purge message type. */
 export const DEFAULT_PURGE_MESSAGE_TYPE = 'PURGE_PUBLIC_CACHE';
 
+/** Default per-build version when neither config nor CLI supplies one. */
+export const DEFAULT_BUILD_VERSION = 'dev';
+
+/** Default SW scope (app base path). */
+export const DEFAULT_SCOPE = '/';
+
+/** Default interval (ms) for the registration's update poll. */
+export const DEFAULT_UPDATE_CHECK_INTERVAL_MS = 60000;
+
+/** Join a scope + a file into a URL, tolerating a scope with or without a trailing slash. */
+export function joinScope(scope: string, file: string): string {
+  return scope.endsWith('/') ? scope + file : scope + '/' + file;
+}
+
 /**
  * A resolved config with all optionals filled in. Used internally by the
  * generator so the emitted SW never depends on undefined values.
@@ -62,6 +102,10 @@ export interface ResolvedServiceWorkerConfig {
   publicApiPathMatchers: string[];
   purgeMessageType: string;
   staticExtensions: string[];
+  buildVersion: string;
+  scope: string;
+  swUrl: string;
+  updateCheckIntervalMs: number;
 }
 
 /**
@@ -87,12 +131,28 @@ export function resolveConfig(config: ServiceWorkerConfig): ResolvedServiceWorke
     config.staticExtensions !== undefined && config.staticExtensions.length > 0
       ? config.staticExtensions
       : [...DEFAULT_STATIC_EXTENSIONS];
+  const buildVersion =
+    config.buildVersion !== undefined && config.buildVersion.trim() !== ''
+      ? config.buildVersion.trim()
+      : DEFAULT_BUILD_VERSION;
+  const scope =
+    config.scope !== undefined && config.scope.trim() !== '' ? config.scope.trim() : DEFAULT_SCOPE;
+  const swUrl =
+    config.swUrl !== undefined && config.swUrl.trim() !== '' ? config.swUrl.trim() : joinScope(scope, 'service-worker.js');
+  const updateCheckIntervalMs =
+    typeof config.updateCheckIntervalMs === 'number' && config.updateCheckIntervalMs >= 0
+      ? config.updateCheckIntervalMs
+      : DEFAULT_UPDATE_CHECK_INTERVAL_MS;
   return {
     apiCacheName: config.apiCacheName,
     staticCacheName: config.staticCacheName,
     publicApiPathMatchers: config.publicApiPathMatchers,
     purgeMessageType,
     staticExtensions,
+    buildVersion,
+    scope,
+    swUrl,
+    updateCheckIntervalMs,
   };
 }
 

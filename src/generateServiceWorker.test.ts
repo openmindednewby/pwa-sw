@@ -22,11 +22,21 @@ describe('generateServiceWorker', () => {
     expect(sw).toContain('networkFirst(event);');
   });
 
-  it('embeds the configured cache names and matchers', () => {
-    expect(sw).toContain('var API_CACHE = "public-survey-api-v2"');
-    expect(sw).toContain('var STATIC_CACHE = "static-assets-v1"');
+  it('embeds the configured cache names (suffixed with the build version) and matchers', () => {
+    // The build version (default 'dev') is appended to the EFFECTIVE cache names so each build's
+    // caches are distinct and the activate handler evicts every other build's.
+    expect(sw).toContain('var API_CACHE = "public-survey-api-v2-dev"');
+    expect(sw).toContain('var STATIC_CACHE = "static-assets-v1-dev"');
     expect(sw).toContain('"/public/surveys/"');
     expect(sw).toContain('"/public/questioner/"');
+  });
+
+  it('stamps the build version so each deploy ships a byte-different worker', () => {
+    const a = generateServiceWorker({ ...config, buildVersion: 'abc123' });
+    const b = generateServiceWorker({ ...config, buildVersion: 'def456' });
+    expect(a).toContain('var BUILD_VERSION = "abc123"');
+    expect(a).toContain('var API_CACHE = "public-survey-api-v2-abc123"');
+    expect(a).not.toEqual(b); // different build → different bytes → the browser installs the update
   });
 
   it('derives version-cleanup prefixes for the activate handler', () => {

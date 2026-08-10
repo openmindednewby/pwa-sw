@@ -23,6 +23,11 @@ export function generateServiceWorker(config: ServiceWorkerConfig): string {
   const resolved = resolveConfig(config);
   const apiPrefix = cachePrefix(resolved.apiCacheName);
   const staticPrefix = cachePrefix(resolved.staticCacheName);
+  // Append the per-build version to the EFFECTIVE cache names (the prefixes stay the config names, so
+  // the activate handler evicts every OTHER build's caches). This is what makes the emitted SW
+  // byte-different on each deploy — the trigger the browser needs to install the new worker.
+  const versionedApiCache = `${resolved.apiCacheName}-${resolved.buildVersion}`;
+  const versionedStaticCache = `${resolved.staticCacheName}-${resolved.buildVersion}`;
 
   const json = (value: unknown): string => JSON.stringify(value);
 
@@ -38,10 +43,15 @@ export function generateServiceWorker(config: ServiceWorkerConfig): string {
  * Cache names are versioned; bumping a version evicts the old (stale) cache on
  * activation. A "${resolved.purgeMessageType}" message evicts the public cache
  * immediately for same-session freshness.
+ *
+ * BUILD_VERSION is stamped per build so every deploy ships a byte-different worker
+ * — the browser only fetches/installs a new SW when this file's bytes change, so
+ * this is what lets an already-open tab pick up a new release (auto-update).
  */
+var BUILD_VERSION = ${json(resolved.buildVersion)};
 
-var API_CACHE = ${json(resolved.apiCacheName)};
-var STATIC_CACHE = ${json(resolved.staticCacheName)};
+var API_CACHE = ${json(versionedApiCache)};
+var STATIC_CACHE = ${json(versionedStaticCache)};
 var MANAGED_CACHES = [API_CACHE, STATIC_CACHE];
 var API_CACHE_PREFIX = ${json(apiPrefix)};
 var STATIC_CACHE_PREFIX = ${json(staticPrefix)};
