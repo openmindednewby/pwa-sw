@@ -19,6 +19,21 @@ interface PwaConfigModule {
 /* eslint-disable no-console */
 
 /**
+ * Resolve the per-build version: an explicit config value wins (a caller can pin it), then a
+ * CI-provided `PWA_BUILD_VERSION` (e.g. the git sha), else a wall-clock token so it changes every run.
+ */
+function resolveBuildVersion(configValue: string | undefined): string {
+  if (configValue !== undefined && configValue.trim() !== '') {
+    return configValue.trim();
+  }
+  const env = process.env.PWA_BUILD_VERSION;
+  if (env !== undefined && env.trim() !== '') {
+    return env.trim();
+  }
+  return Date.now().toString(36);
+}
+
+/**
  * `pwa-sw-gen <config> <outDir>`
  * - config: path to a CommonJS module exporting { serviceWorker, manifest? }.
  * - outDir: directory to write `service-worker.js` (+ `manifest.json` if config has one).
@@ -50,16 +65,10 @@ export function run(argv: string[]): number {
 
   // Stamp a UNIQUE per-build version so every deploy ships a byte-different SW (the trigger the
   // browser needs to install the update). Prefer an explicit config value, then a CI-provided
-  // PWA_BUILD_VERSION (e.g. the git sha), else a wall-clock token. The config value wins so a caller
-  // can pin it; otherwise it changes every run.
+  // PWA_BUILD_VERSION (e.g. the git sha), else a wall-clock token.
   const swConfig: ServiceWorkerConfig = {
     ...mod.serviceWorker,
-    buildVersion:
-      mod.serviceWorker.buildVersion && mod.serviceWorker.buildVersion.trim() !== ''
-        ? mod.serviceWorker.buildVersion
-        : process.env.PWA_BUILD_VERSION && process.env.PWA_BUILD_VERSION.trim() !== ''
-          ? process.env.PWA_BUILD_VERSION.trim()
-          : Date.now().toString(36),
+    buildVersion: resolveBuildVersion(mod.serviceWorker.buildVersion),
   };
 
   const swSource = generateServiceWorker(swConfig);
