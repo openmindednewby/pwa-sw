@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.0
+- Config: added `reloadOnControllerChange` (default `true`). Set `false` for an app that ALSO registers a SECOND service worker at the same scope (e.g. a separate push-notifications worker) — the two workers hand control back and forth and reload-on-`controllerchange` would turn that silent hand-off into a RELOAD LOOP. With it off, `generateRegistration` omits the reload listener entirely; a new build's SW still installs, activates, and evicts stale caches (the stale-cache fix is unaffected) — only the auto-reload of an already-open tab is skipped, so the tab converges on the next navigation.
+
 ## 1.1.0
 - Auto-update: `generateServiceWorker` now stamps a per-build `BUILD_VERSION` into the worker (and the effective cache names), so every deploy ships a byte-different SW — the trigger the browser needs to install the update; the activate handler evicts every other build's caches.
 - New `generateRegistration` + `sw-register.js` emitted by the CLI: registers with `updateViaCache:'none'`, polls for a new worker on load / interval / refocus, and reloads once on `controllerchange` (guarded against first-install + loops) so an already-open tab picks up a redeploy automatically.

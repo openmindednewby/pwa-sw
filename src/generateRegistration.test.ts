@@ -40,6 +40,22 @@ describe('generateRegistration', () => {
     expect(reg).toContain('if (refreshing) return;'); // idempotent — no reload loop
   });
 
+  it('OMITS the controllerchange reload entirely when reloadOnControllerChange is false', () => {
+    const r = generateRegistration({ ...config, reloadOnControllerChange: false });
+    // No reload listener at all (an app with a 2nd SW at the same scope would reload-loop).
+    expect(r).not.toContain("addEventListener('controllerchange'");
+    expect(r).not.toContain('window.location.reload();');
+    expect(r).not.toContain('var hadController');
+    // ...but registration + update polling still run (the stale-cache fix is unaffected).
+    expect(r).toContain("updateViaCache: 'none'");
+    expect(r).toContain('reg.update()');
+    expect(r).toContain('reloadOnControllerChange is disabled'); // documents why
+  });
+
+  it('reloads by default (reloadOnControllerChange omitted)', () => {
+    expect(reg).toContain("addEventListener('controllerchange'"); // the shared `reg` uses the default
+  });
+
   it('omits the interval timer when updateCheckIntervalMs is 0', () => {
     const r = generateRegistration({ ...config, updateCheckIntervalMs: 0 });
     expect(r).toContain('var UPDATE_INTERVAL_MS = 0');

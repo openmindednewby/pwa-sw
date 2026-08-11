@@ -59,6 +59,19 @@ export interface ServiceWorkerConfig {
    * Used only by `generateRegistration`.
    */
   updateCheckIntervalMs?: number;
+  /**
+   * Whether the registration reloads the page once when a NEW worker takes
+   * control (`controllerchange`). Defaults to `true`.
+   *
+   * Set `false` for an app that ALSO registers a SECOND service worker at the
+   * same scope (e.g. a separate push-notifications worker): the two workers
+   * hand control back and forth, and reload-on-controllerchange would turn that
+   * silent hand-off into a RELOAD LOOP. With this off, a new build's SW still
+   * installs + activates + evicts stale caches (the stale-cache fix still
+   * works); only the auto-RELOAD of an already-open tab is skipped — that tab
+   * converges on the next navigation instead. Used only by `generateRegistration`.
+   */
+  reloadOnControllerChange?: boolean;
 }
 
 /** Default static-asset extensions (cache-first). */
@@ -87,6 +100,9 @@ export const DEFAULT_SCOPE = '/';
 /** Default interval (ms) for the registration's update poll. */
 export const DEFAULT_UPDATE_CHECK_INTERVAL_MS = 60000;
 
+/** Default: reload the page once when a new worker takes control. */
+export const DEFAULT_RELOAD_ON_CONTROLLER_CHANGE = true;
+
 /** Join a scope + a file into a URL, tolerating a scope with or without a trailing slash. */
 export function joinScope(scope: string, file: string): string {
   return scope.endsWith('/') ? scope + file : scope + '/' + file;
@@ -106,6 +122,7 @@ export interface ResolvedServiceWorkerConfig {
   scope: string;
   swUrl: string;
   updateCheckIntervalMs: number;
+  reloadOnControllerChange: boolean;
 }
 
 /**
@@ -143,6 +160,10 @@ export function resolveConfig(config: ServiceWorkerConfig): ResolvedServiceWorke
     typeof config.updateCheckIntervalMs === 'number' && config.updateCheckIntervalMs >= 0
       ? config.updateCheckIntervalMs
       : DEFAULT_UPDATE_CHECK_INTERVAL_MS;
+  const reloadOnControllerChange =
+    typeof config.reloadOnControllerChange === 'boolean'
+      ? config.reloadOnControllerChange
+      : DEFAULT_RELOAD_ON_CONTROLLER_CHANGE;
   return {
     apiCacheName: config.apiCacheName,
     staticCacheName: config.staticCacheName,
@@ -153,6 +174,7 @@ export function resolveConfig(config: ServiceWorkerConfig): ResolvedServiceWorke
     scope,
     swUrl,
     updateCheckIntervalMs,
+    reloadOnControllerChange,
   };
 }
 
