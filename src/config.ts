@@ -140,22 +140,15 @@ export function resolveConfig(config: ServiceWorkerConfig): ResolvedServiceWorke
   if (!Array.isArray(config.publicApiPathMatchers) || config.publicApiPathMatchers.length === 0) {
     throw new Error('pwa-sw: publicApiPathMatchers must contain at least one path substring');
   }
-  const purgeMessageType =
-    config.purgeMessageType !== undefined && config.purgeMessageType.trim() !== ''
-      ? config.purgeMessageType
-      : DEFAULT_PURGE_MESSAGE_TYPE;
-  const staticExtensions =
-    config.staticExtensions !== undefined && config.staticExtensions.length > 0
-      ? config.staticExtensions
-      : [...DEFAULT_STATIC_EXTENSIONS];
-  const buildVersion =
-    config.buildVersion !== undefined && config.buildVersion.trim() !== ''
-      ? config.buildVersion.trim()
-      : DEFAULT_BUILD_VERSION;
-  const scope =
-    config.scope !== undefined && config.scope.trim() !== '' ? config.scope.trim() : DEFAULT_SCOPE;
-  const swUrl =
-    config.swUrl !== undefined && config.swUrl.trim() !== '' ? config.swUrl.trim() : joinScope(scope, 'service-worker.js');
+  // `x?.trim() || fallback` collapses the undefined AND empty-string cases into
+  // one expression (keeps the cognitive-complexity of resolveConfig in budget).
+  const purgeMessageType = config.purgeMessageType?.trim() || DEFAULT_PURGE_MESSAGE_TYPE;
+  const staticExtensions = config.staticExtensions?.length
+    ? config.staticExtensions
+    : [...DEFAULT_STATIC_EXTENSIONS];
+  const buildVersion = config.buildVersion?.trim() || DEFAULT_BUILD_VERSION;
+  const scope = config.scope?.trim() || DEFAULT_SCOPE;
+  const swUrl = config.swUrl?.trim() || joinScope(scope, 'service-worker.js');
   const updateCheckIntervalMs =
     typeof config.updateCheckIntervalMs === 'number' && config.updateCheckIntervalMs >= 0
       ? config.updateCheckIntervalMs
