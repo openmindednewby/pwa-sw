@@ -23,11 +23,17 @@ export function generateServiceWorker(config: ServiceWorkerConfig): string {
   const resolved = resolveConfig(config);
   const apiPrefix = cachePrefix(resolved.apiCacheName);
   const staticPrefix = cachePrefix(resolved.staticCacheName);
-  // Append the per-build version to the EFFECTIVE cache names (the prefixes stay the config names, so
-  // the activate handler evicts every OTHER build's caches). This is what makes the emitted SW
-  // byte-different on each deploy — the trigger the browser needs to install the new worker.
-  const versionedApiCache = `${resolved.apiCacheName}-${resolved.buildVersion}`;
-  const versionedStaticCache = `${resolved.staticCacheName}-${resolved.buildVersion}`;
+  // The EFFECTIVE cache names are now derived IN the emitted worker, as
+  // `<cacheName> + "-" + BUILD_VERSION`, rather than pre-joined here. Same value,
+  // two gains: BUILD_VERSION is genuinely referenced (it was a stamped-but-unused
+  // const, which every consumer's `no-unused-vars` flagged), and the version can
+  // no longer drift away from the cache names -- they were three independent
+  // interpolations of the same field, agreeing only by convention.
+  //
+  // The PREFIXES stay the bare config names so the activate handler still evicts
+  // every OTHER build's caches. Note cachePrefix() also strips the -vN schema
+  // segment, so prefix + BUILD_VERSION is NOT the cache name -- do not "simplify"
+  // the emitted lines to use the prefixes.
 
   const json = (value: unknown): string => JSON.stringify(value);
 
@@ -48,21 +54,21 @@ export function generateServiceWorker(config: ServiceWorkerConfig): string {
  * — the browser only fetches/installs a new SW when this file's bytes change, so
  * this is what lets an already-open tab pick up a new release (auto-update).
  */
-var BUILD_VERSION = ${json(resolved.buildVersion)};
+const BUILD_VERSION = ${json(resolved.buildVersion)};
 
-var API_CACHE = ${json(versionedApiCache)};
-var STATIC_CACHE = ${json(versionedStaticCache)};
-var MANAGED_CACHES = [API_CACHE, STATIC_CACHE];
-var API_CACHE_PREFIX = ${json(apiPrefix)};
-var STATIC_CACHE_PREFIX = ${json(staticPrefix)};
-var PUBLIC_API_MATCHERS = ${json(resolved.publicApiPathMatchers)};
-var STATIC_EXTENSIONS = ${json(resolved.staticExtensions)};
-var PURGE_MESSAGE_TYPE = ${json(resolved.purgeMessageType)};
+const API_CACHE = ${json(resolved.apiCacheName)} + "-" + BUILD_VERSION;
+const STATIC_CACHE = ${json(resolved.staticCacheName)} + "-" + BUILD_VERSION;
+const MANAGED_CACHES = [API_CACHE, STATIC_CACHE];
+const API_CACHE_PREFIX = ${json(apiPrefix)};
+const STATIC_CACHE_PREFIX = ${json(staticPrefix)};
+const PUBLIC_API_MATCHERS = ${json(resolved.publicApiPathMatchers)};
+const STATIC_EXTENSIONS = ${json(resolved.staticExtensions)};
+const PURGE_MESSAGE_TYPE = ${json(resolved.purgeMessageType)};
 
 /** A cacheable public API read (network-first) if its pathname matches any matcher. */
 function isPublicApiRequest(url) {
-  var pathname = new URL(url).pathname;
-  for (var i = 0; i < PUBLIC_API_MATCHERS.length; i++) {
+  const pathname = new URL(url).pathname;
+  for (let i = 0; i < PUBLIC_API_MATCHERS.length; i++) {
     if (pathname.indexOf(PUBLIC_API_MATCHERS[i]) !== -1) return true;
   }
   return false;
@@ -70,7 +76,7 @@ function isPublicApiRequest(url) {
 
 /** An admin/protected/auth request that must never be cached. */
 function isAdminApiRequest(url) {
-  var pathname = new URL(url).pathname;
+  const pathname = new URL(url).pathname;
   if (pathname.indexOf('/api/') !== -1 && pathname.indexOf('/public/') === -1) return true;
   if (pathname.indexOf('/realms/') !== -1 || pathname.indexOf('/token') !== -1) return true;
   return false;
@@ -88,8 +94,8 @@ function isHttpRequest(url) {
 
 /** A static asset (cache-first) based on file extension. */
 function isStaticAsset(url) {
-  var pathname = new URL(url).pathname.toLowerCase();
-  for (var i = 0; i < STATIC_EXTENSIONS.length; i++) {
+  const pathname = new URL(url).pathname.toLowerCase();
+  for (let i = 0; i < STATIC_EXTENSIONS.length; i++) {
     if (pathname.lastIndexOf(STATIC_EXTENSIONS[i]) === pathname.length - STATIC_EXTENSIONS[i].length) return true;
   }
   return false;
@@ -105,8 +111,8 @@ function networkFirst(event) {
     caches.open(API_CACHE).then(function(cache) {
       return fetch(event.request).then(function(networkResponse) {
         if (networkResponse && networkResponse.ok) {
-          var responseToCache = networkResponse.clone();
-          var headers = new Headers(responseToCache.headers);
+          const responseToCache = networkResponse.clone();
+          const headers = new Headers(responseToCache.headers);
           headers.set('sw-cached-at', new Date().toISOString());
           return responseToCache.blob().then(function(body) {
             cache.put(event.request, new Response(body, {
@@ -173,8 +179,8 @@ self.addEventListener('activate', function(event) {
       return Promise.all(
         cacheNames
           .filter(function(name) {
-            var isOurCache = name.indexOf(API_CACHE_PREFIX) === 0 || name.indexOf(STATIC_CACHE_PREFIX) === 0;
-            var isCurrent = MANAGED_CACHES.indexOf(name) !== -1;
+            const isOurCache = name.indexOf(API_CACHE_PREFIX) === 0 || name.indexOf(STATIC_CACHE_PREFIX) === 0;
+            const isCurrent = MANAGED_CACHES.indexOf(name) !== -1;
             return isOurCache && !isCurrent;
           })
           .map(function(name) { return caches.delete(name); })
@@ -186,14 +192,14 @@ self.addEventListener('activate', function(event) {
 });
 
 self.addEventListener('message', function(event) {
-  var data = event.data || {};
+  const data = event.data || {};
   if (data.type === PURGE_MESSAGE_TYPE) {
     event.waitUntil(purgePublicCache(data.externalId));
   }
 });
 
 self.addEventListener('fetch', function(event) {
-  var request = event.request;
+  const request = event.request;
   if (request.method !== 'GET') return;
   if (!isHttpRequest(request.url)) return;
   if (isAdminApiRequest(request.url)) return;

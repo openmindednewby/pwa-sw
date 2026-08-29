@@ -16,19 +16,19 @@ describe('generateRegistration', () => {
   });
 
   it('registers the SW under the configured scope + derived url, with updateViaCache none', () => {
-    expect(reg).toContain('var SCOPE = "/app/"');
-    expect(reg).toContain('var SW_URL = "/app/service-worker.js"'); // derived from scope
+    expect(reg).toContain('const SCOPE = "/app/"');
+    expect(reg).toContain('const SW_URL = "/app/service-worker.js"'); // derived from scope
     expect(reg).toContain("updateViaCache: 'none'");
   });
 
   it('honours an explicit swUrl over the derived one', () => {
     const r = generateRegistration({ ...config, swUrl: '/custom/sw.js' });
-    expect(r).toContain('var SW_URL = "/custom/sw.js"');
+    expect(r).toContain('const SW_URL = "/custom/sw.js"');
   });
 
   it('proactively checks for updates on load, on the interval, and on refocus', () => {
     expect(reg).toContain('reg.update()');
-    expect(reg).toContain('var UPDATE_INTERVAL_MS = 30000');
+    expect(reg).toContain('const UPDATE_INTERVAL_MS = 30000');
     expect(reg).toContain('setInterval(check, UPDATE_INTERVAL_MS)');
     expect(reg).toContain("document.addEventListener('visibilitychange'");
   });
@@ -36,7 +36,7 @@ describe('generateRegistration', () => {
   it('reloads once when a NEW worker takes control, guarded against first-install + loops', () => {
     expect(reg).toContain("navigator.serviceWorker.addEventListener('controllerchange'");
     expect(reg).toContain('window.location.reload();');
-    expect(reg).toContain('var hadController = !!navigator.serviceWorker.controller;'); // skip first install
+    expect(reg).toContain('let hadController = !!navigator.serviceWorker.controller;'); // skip first install
     expect(reg).toContain('if (refreshing) return;'); // idempotent — no reload loop
   });
 
@@ -45,7 +45,7 @@ describe('generateRegistration', () => {
     // No reload listener at all (an app with a 2nd SW at the same scope would reload-loop).
     expect(r).not.toContain("addEventListener('controllerchange'");
     expect(r).not.toContain('window.location.reload();');
-    expect(r).not.toContain('var hadController');
+    expect(r).not.toContain('let hadController');
     // ...but registration + update polling still run (the stale-cache fix is unaffected).
     expect(r).toContain("updateViaCache: 'none'");
     expect(r).toContain('reg.update()');
@@ -58,7 +58,7 @@ describe('generateRegistration', () => {
 
   it('omits the interval timer when updateCheckIntervalMs is 0', () => {
     const r = generateRegistration({ ...config, updateCheckIntervalMs: 0 });
-    expect(r).toContain('var UPDATE_INTERVAL_MS = 0');
+    expect(r).toContain('const UPDATE_INTERVAL_MS = 0');
     // The setInterval is guarded by `if (UPDATE_INTERVAL_MS > 0)`, so with 0 it never schedules.
     expect(r).toContain('if (UPDATE_INTERVAL_MS > 0)');
   });
@@ -69,8 +69,8 @@ describe('generateRegistration', () => {
       staticCacheName: 'b-v1',
       publicApiPathMatchers: ['/public/'],
     });
-    expect(r).toContain('var SCOPE = "/"');
-    expect(r).toContain('var SW_URL = "/service-worker.js"');
-    expect(r).toContain('var UPDATE_INTERVAL_MS = 60000'); // default interval
+    expect(r).toContain('const SCOPE = "/"');
+    expect(r).toContain('const SW_URL = "/service-worker.js"');
+    expect(r).toContain('const UPDATE_INTERVAL_MS = 60000'); // default interval
   });
 });

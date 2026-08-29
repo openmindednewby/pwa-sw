@@ -25,8 +25,8 @@ describe('generateServiceWorker', () => {
   it('embeds the configured cache names (suffixed with the build version) and matchers', () => {
     // The build version (default 'dev') is appended to the EFFECTIVE cache names so each build's
     // caches are distinct and the activate handler evicts every other build's.
-    expect(sw).toContain('var API_CACHE = "public-survey-api-v2-dev"');
-    expect(sw).toContain('var STATIC_CACHE = "static-assets-v1-dev"');
+    expect(sw).toContain('const API_CACHE = "public-survey-api-v2" + "-" + BUILD_VERSION;');
+    expect(sw).toContain('const STATIC_CACHE = "static-assets-v1" + "-" + BUILD_VERSION;');
     expect(sw).toContain('"/public/surveys/"');
     expect(sw).toContain('"/public/questioner/"');
   });
@@ -34,18 +34,18 @@ describe('generateServiceWorker', () => {
   it('stamps the build version so each deploy ships a byte-different worker', () => {
     const a = generateServiceWorker({ ...config, buildVersion: 'abc123' });
     const b = generateServiceWorker({ ...config, buildVersion: 'def456' });
-    expect(a).toContain('var BUILD_VERSION = "abc123"');
-    expect(a).toContain('var API_CACHE = "public-survey-api-v2-abc123"');
+    expect(a).toContain('const BUILD_VERSION = "abc123"');
+    expect(a).toContain('const API_CACHE = "public-survey-api-v2" + "-" + BUILD_VERSION;');
     expect(a).not.toEqual(b); // different build → different bytes → the browser installs the update
   });
 
   it('derives version-cleanup prefixes for the activate handler', () => {
-    expect(sw).toContain('var API_CACHE_PREFIX = "public-survey-api-"');
-    expect(sw).toContain('var STATIC_CACHE_PREFIX = "static-assets-"');
+    expect(sw).toContain('const API_CACHE_PREFIX = "public-survey-api-"');
+    expect(sw).toContain('const STATIC_CACHE_PREFIX = "static-assets-"');
   });
 
   it('includes the purge message handler with the configured type', () => {
-    expect(sw).toContain('var PURGE_MESSAGE_TYPE = "PURGE_PUBLIC_CACHE"');
+    expect(sw).toContain('const PURGE_MESSAGE_TYPE = "PURGE_PUBLIC_CACHE"');
     expect(sw).toContain('function purgePublicCache(externalId)');
     expect(sw).toContain('if (data.type === PURGE_MESSAGE_TYPE)');
   });
@@ -79,7 +79,7 @@ describe('generateServiceWorker', () => {
       staticCacheName: 'b-v1',
       publicApiPathMatchers: ['/public/menus/'],
     });
-    expect(generated).toContain('var PURGE_MESSAGE_TYPE = "PURGE_PUBLIC_CACHE"');
+    expect(generated).toContain('const PURGE_MESSAGE_TYPE = "PURGE_PUBLIC_CACHE"');
   });
 
   it('propagates config validation errors', () => {

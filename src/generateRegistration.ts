@@ -19,8 +19,8 @@ function reloadListenerSource(resolved: ResolvedServiceWorkerConfig): string {
   // controllerchange on a fresh visit is the initial install, not an update —
   // don't reload for that one; only reload for a genuine hand-off after we were
   // already controlled. The 'refreshing' guard makes the reload idempotent.
-  var hadController = !!navigator.serviceWorker.controller;
-  var refreshing = false;
+  let hadController = !!navigator.serviceWorker.controller;
+  let refreshing = false;
   navigator.serviceWorker.addEventListener('controllerchange', function () {
     if (!hadController) { hadController = true; return; }
     if (refreshing) return;
@@ -76,16 +76,16 @@ export function generateRegistration(config: ServiceWorkerConfig): string {
 (function () {
   if (!('serviceWorker' in navigator)) return;
 
-  var SW_URL = ${json(resolved.swUrl)};
-  var SCOPE = ${json(resolved.scope)};
-  var UPDATE_INTERVAL_MS = ${resolved.updateCheckIntervalMs};
+  const SW_URL = ${json(resolved.swUrl)};
+  const SCOPE = ${json(resolved.scope)};
+  const UPDATE_INTERVAL_MS = ${resolved.updateCheckIntervalMs};
 ${reloadBlock}
   window.addEventListener('load', function () {
-    var start = function () {
+    const start = function () {
       navigator.serviceWorker
         .register(SW_URL, { scope: SCOPE, updateViaCache: 'none' })
         .then(function (reg) {
-          var check = function () { try { reg.update(); } catch (e) {} };
+          const check = function () { try { reg.update(); } catch (_e) {} };
           check(); // look for a newer worker right away
           if (UPDATE_INTERVAL_MS > 0) {
             setInterval(check, UPDATE_INTERVAL_MS);
@@ -95,7 +95,6 @@ ${reloadBlock}
           });
         })
         .catch(function (err) {
-          // eslint-disable-next-line no-console
           console.warn('SW registration failed', err);
         });
     };
