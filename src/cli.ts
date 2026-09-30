@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { isAbsolute, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 
 import { buildManifest, type ManifestConfig } from './buildManifest';
 import { generateServiceWorker } from './generateServiceWorker';
 import { generateRegistration } from './generateRegistration';
+import { retireWorkerFiles } from './retireWorker';
 import type { ServiceWorkerConfig } from './config';
 
 /**
@@ -81,6 +82,13 @@ export function run(argv: string[]): number {
   const regPath = join(outDir, 'sw-register.js');
   writeFileSync(regPath, regSource, 'utf8');
   console.log(`pwa-sw-gen: wrote ${regPath}`);
+
+  for (const retired of retireWorkerFiles(swConfig)) {
+    const retiredPath = join(outDir, retired.file);
+    mkdirSync(dirname(retiredPath), { recursive: true });
+    writeFileSync(retiredPath, retired.source, 'utf8');
+    console.log(`pwa-sw-gen: wrote ${retiredPath} (kill-switch for a retired worker URL)`);
+  }
 
   if (mod.manifest) {
     const manifest = buildManifest(mod.manifest);

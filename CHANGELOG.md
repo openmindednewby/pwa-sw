@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.5.0
+- `retireWorkerUrls` (e.g. `['/sw.js']`): `pwa-sw-gen` writes a kill-switch worker at each retired worker URL. It skips waiting on install; on activate it deletes every cache, unregisters itself and navigates each controlled window once. Fixes players stuck on an old worker at a URL that now 404s (a 404 on the update check does not unregister a worker, and its cached page never loads `sw-register.js`). The old URL must keep being served with `Cache-Control: no-cache`. Also exported: `generateRetireWorker()`, `retireWorkerFiles(config)`.
+
 ## 1.4.0
 - Unhashed static assets (no content hash in the filename) are now network-first with `cache: 'no-cache'` by default (`freshUnhashedAssets`, `hashedAssetPattern`, `unhashedPathMatchers`); only content-hashed assets stay cache-first. Before, a cache-first `Build/game.wasm` could be paired with a newer loader after a deploy.
 - HTML is network-first with an offline fallback to the cached copy, then the cached shell at `scope` (behaviour taken from `event-landing-kit` `swCore.ts`: navigate-or-`Accept: text/html` detection and the shell fallback).

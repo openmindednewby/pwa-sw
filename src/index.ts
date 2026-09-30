@@ -11,6 +11,8 @@ export {
 export type { ServiceWorkerConfig, ResolvedServiceWorkerConfig } from './config';
 export { generateServiceWorker } from './generateServiceWorker';
 export { generateRegistration } from './generateRegistration';
+export { generateRetireWorker, retireWorkerFiles } from './retireWorker';
+export type { RetireWorkerFile } from './retireWorker';
 export { buildManifest } from './buildManifest';
 export {
   DEFAULT_HASHED_ASSET_PATTERN,

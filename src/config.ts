@@ -74,6 +74,16 @@ export interface ServiceWorkerConfig extends FreshnessOptions {
    * converges on the next navigation instead. Used only by `generateRegistration`.
    */
   reloadOnControllerChange?: boolean;
+  /**
+   * URLs of service workers this app USED to register, e.g. `['/sw.js']`. For
+   * each one the CLI writes a kill-switch worker (see `generateRetireWorker`):
+   * a player whose browser still runs the old worker (which may serve a cached
+   * page that never loads `sw-register.js`) gets it on the browser's next
+   * update check, and it deletes all caches, unregisters itself and reloads
+   * the page once. The URL must keep being SERVED (a 404 does not unregister
+   * the old worker) with `Cache-Control: no-cache`. Must sit inside `scope`.
+   */
+  retireWorkerUrls?: string[];
 }
 
 /** Default static-asset extensions (cache-first). */

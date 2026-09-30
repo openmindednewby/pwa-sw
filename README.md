@@ -98,6 +98,20 @@ worker does not answer (a legacy hand-written SW), the snippet unregisters the w
 covers the page, deletes all caches and reloads ONCE. A `sessionStorage` key per page build
 prevents a loop. The page build is the stamped version, or `<meta name="pwa-build-version">`.
 
+**Retiring an old worker URL** (`retireWorkerUrls`, 1.5.0): moving from a hand-written worker at
+`/sw.js` to `/service-worker.js` strands returning players. The old worker keeps answering
+navigations from its cache with the OLD page, which never loads `sw-register.js`, and a 404 on the
+browser's update check of `/sw.js` does NOT unregister it. Set
+`retireWorkerUrls: ['/sw.js']` and `pwa-sw-gen` writes a kill-switch worker to that path: on the
+next update check it installs, skips waiting, deletes every cache, unregisters itself and navigates
+each window it controlled once, so the page reloads from the network and registers the new worker.
+
+- **The old URL must keep being served (200, never 404)** — deploy the generated file there for as
+  long as any player might still run the old worker (months, not days).
+- **Serve it with `Cache-Control: no-cache`**, like `service-worker.js`.
+- Each URL must be an absolute `.js` path inside `scope`, and not the live worker or
+  `sw-register.js` (the generator throws otherwise).
+
 ## Adopting it in a game
 
 1. `npm i -D @dloizides/pwa-sw`, then `pwa-sw.config.js`:
@@ -111,8 +125,9 @@ prevents a loop. The page build is the stamped version, or `<meta name="pwa-buil
 2. Build step: `PWA_BUILD_VERSION=$(git rev-parse --short HEAD) pwa-sw-gen ./pwa-sw.config.js <out-dir>`
    (without it a timestamp is used; either way every build ships a byte-different worker).
 3. In the game's HTML: `<script src="/sw-register.js" defer></script>`. Delete the old hand-written
-   worker file and its registration code; keep the SW URL the same (`/service-worker.js`) or the
-   self-heal removes the old worker on the first visit.
+   worker file and its registration code. If the old worker lived at a DIFFERENT URL (e.g.
+   `/sw.js`), list it in `retireWorkerUrls` (see below) — self-heal alone cannot reach a player
+   whose old worker serves a cached page that never loads `sw-register.js`.
 4. nginx: `Cache-Control: no-cache` on `index.html`, `service-worker.js` and `sw-register.js`.
 5. **Do NOT also run `@dloizides/game-shell`'s `versionPoll`.** pwa-sw already detects the new
    build and reloads the tab; two update mechanisms race each other and reload twice (or loop).

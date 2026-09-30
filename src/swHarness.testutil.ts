@@ -61,25 +61,48 @@ export class FakeCacheStorage {
 
 export type FetchImpl = (request: FakeRequest, init?: { cache?: string }) => Promise<Response>;
 
+export interface FakeWindowClient {
+  url: string;
+  navigate: jest.Mock<Promise<unknown>, [string]>;
+}
+
+export interface WorkerSelf {
+  skipWaiting: jest.Mock;
+  registration: { unregister: jest.Mock<Promise<boolean>, []> };
+  clients: { claim: jest.Mock; matchAll: jest.Mock<Promise<FakeWindowClient[]>, [unknown?]> };
+}
+
 export interface WorkerEnv {
   listeners: Map<string, Listener[]>;
   caches: FakeCacheStorage;
   fetch: jest.Mock<Promise<Response>, [FakeRequest, { cache?: string }?]>;
+  self: WorkerSelf;
 }
 
-export function loadWorker(source: string, fetchImpl: FetchImpl): WorkerEnv {
+export function fakeWindowClient(url: string): FakeWindowClient {
+  return { url, navigate: jest.fn((_url: string) => Promise.resolve(undefined)) };
+}
+
+export function loadWorker(source: string, fetchImpl: FetchImpl, windowClients: FakeWindowClient[] = []): WorkerEnv {
   const listeners = new Map<string, Listener[]>();
   const cacheStorage = new FakeCacheStorage();
   const fetchMock = jest.fn(fetchImpl);
+  const workerSelf: WorkerSelf = {
+    skipWaiting: jest.fn(() => Promise.resolve()),
+    registration: { unregister: jest.fn(() => Promise.resolve(true)) },
+    clients: {
+      claim: jest.fn(() => Promise.resolve()),
+      matchAll: jest.fn((_options?: unknown) => Promise.resolve(windowClients)),
+    },
+  };
   const self = {
+    ...workerSelf,
     addEventListener: (type: string, fn: Listener): void => {
       listeners.set(type, [...(listeners.get(type) ?? []), fn]);
     },
-    skipWaiting: jest.fn(),
-    clients: { claim: jest.fn(() => Promise.resolve()) },
   };
   new Function('self', 'caches', 'fetch', source)(self, cacheStorage, fetchMock);
-  return { listeners, caches: cacheStorage, fetch: fetchMock };
+  return { listeners, caches: cacheStorage, fetch: fetchMock, self: workerSelf };
 }
 
 function emit(env: WorkerEnv, type: string, event: unknown): void {
@@ -118,6 +141,12 @@ export async function dispatchMessage(env: WorkerEnv, data: unknown): Promise<un
   emit(env, 'message', event);
   await Promise.all(pending);
   return replies[0];
+}
+
+export async function dispatchInstall(env: WorkerEnv): Promise<void> {
+  const pending: Array<Promise<unknown>> = [];
+  emit(env, 'install', { waitUntil: (p: Promise<unknown>): number => pending.push(p) });
+  await Promise.all(pending);
 }
 
 export async function dispatchActivate(env: WorkerEnv): Promise<void> {
