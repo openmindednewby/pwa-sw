@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.0
+- Unhashed static assets (no content hash in the filename) are now network-first with `cache: 'no-cache'` by default (`freshUnhashedAssets`, `hashedAssetPattern`, `unhashedPathMatchers`); only content-hashed assets stay cache-first. Before, a cache-first `Build/game.wasm` could be paired with a newer loader after a deploy.
+- HTML is network-first with an offline fallback to the cached copy, then the cached shell at `scope` (behaviour taken from `event-landing-kit` `swCore.ts`: navigate-or-`Accept: text/html` detection and the shell fallback).
+- The worker never intercepts its own script or `sw-register.js` (`registrationUrl`).
+- Zombie self-heal in `sw-register.js` (`selfHeal`, `selfHealGraceMs`): a controlling worker that still reports another build after the grace period, or does not answer, is unregistered, caches are cleared and the page reloads once (sessionStorage loop guard). The worker answers `PWA_SW_GET_VERSION`.
+- `unityWebGLPreset({ name })` and `staticOnly` (a worker with no public API).
+
 ## 1.3.0
 - Emitted code is now `const`/`let`, never `var`. The generated `service-worker.js` and
   `sw-register.js` are linted by every consuming app (they live in `public/`), and `no-var`

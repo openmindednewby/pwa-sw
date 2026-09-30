@@ -75,10 +75,52 @@ const swSource = generateServiceWorker({
 const manifest = buildManifest({ name: 'Katalogos', shortName: 'Katalogos', description: '…', themeColor: '#008d5c', icons: [...] });
 ```
 
+## Freshness: every deploy reaches every player (1.4.0)
+
+The generated worker never serves a previous build:
+
+| Request | Strategy |
+|---|---|
+| HTML (navigation, or `Accept: text/html`) | network-first; offline: cached copy, else the cached shell at `scope` |
+| Static asset WITHOUT a content hash in its filename (`hero.png`, `Build/game.wasm`) | network-first with `cache: 'no-cache'` (a 304 when unchanged); cache = offline fallback |
+| Content-hashed asset (`entry-5f3c9a1b.js`) | cache-first; its URL changes when its bytes do |
+| `service-worker.js`, `sw-register.js` | never intercepted |
+
+Caches are keyed by the per-build `BUILD_VERSION`; `activate` deletes every other build's
+caches, then `skipWaiting` + `clients.claim` + the snippet's `controllerchange` reload hand an
+open tab to the new build. Options: `freshUnhashedAssets` (default `true`), `hashedAssetPattern`
+(RegExp source, default `DEFAULT_HASHED_ASSET_PATTERN`), `unhashedPathMatchers`, `staticOnly`.
+
+**Zombie self-heal** (`selfHeal`, default = `reloadOnControllerChange`): after registering, the
+snippet asks the controlling worker for its build (`PWA_SW_GET_VERSION`). If it still differs from
+the page's build after `selfHealGraceMs` (default 10 s, which covers the normal hand-off), or the
+worker does not answer (a legacy hand-written SW), the snippet unregisters the workers whose scope
+covers the page, deletes all caches and reloads ONCE. A `sessionStorage` key per page build
+prevents a loop. The page build is the stamped version, or `<meta name="pwa-build-version">`.
+
+## Adopting it in a game
+
+1. `npm i -D @dloizides/pwa-sw`, then `pwa-sw.config.js`:
+   ```js
+   const { unityWebGLPreset } = require('@dloizides/pwa-sw');
+   module.exports = { serviceWorker: unityWebGLPreset({ name: 'ghosty' }), manifest: { /* … */ } };
+   ```
+   Unity preset: `Build/*.wasm`, `*.data`, `*.framework.js`, `*.loader.js` (and `.br`/`.gz`/
+   `.unityweb` variants) and `TemplateData/*` are always revalidated. A non-Unity game passes
+   `staticOnly: true, publicApiPathMatchers: []` plus its own cache names.
+2. Build step: `PWA_BUILD_VERSION=$(git rev-parse --short HEAD) pwa-sw-gen ./pwa-sw.config.js <out-dir>`
+   (without it a timestamp is used; either way every build ships a byte-different worker).
+3. In the game's HTML: `<script src="/sw-register.js" defer></script>`. Delete the old hand-written
+   worker file and its registration code; keep the SW URL the same (`/service-worker.js`) or the
+   self-heal removes the old worker on the first visit.
+4. nginx: `Cache-Control: no-cache` on `index.html`, `service-worker.js` and `sw-register.js`.
+5. **Do NOT also run `@dloizides/game-shell`'s `versionPoll`.** pwa-sw already detects the new
+   build and reloads the tab; two update mechanisms race each other and reload twice (or loop).
+
 ## Registering the worker (app side)
 
-Registration stays in the app (it's framework-specific). Register `/service-worker.js`
-at `load`, scoped to `/`. To evict the public cache mid-session (e.g. after a save),
+`pwa-sw-gen` also writes `sw-register.js` (registration + auto-update + self-heal); load it
+with a `<script src>`. To evict the public cache mid-session (e.g. after a save),
 post the purge message to the controller:
 
 ```ts
@@ -89,7 +131,9 @@ navigator.serviceWorker.controller?.postMessage({ type: 'PURGE_PUBLIC_CACHE', ex
 
 - `generateServiceWorker(config: ServiceWorkerConfig): string`
 - `buildManifest(config: ManifestConfig): BuiltManifest`
-- `resolveConfig`, `cachePrefix`, `DEFAULT_STATIC_EXTENSIONS`, `DEFAULT_PURGE_MESSAGE_TYPE`
+- `generateRegistration(config: ServiceWorkerConfig): string`
+- `unityWebGLPreset({ name, ...overrides }): ServiceWorkerConfig`
+- `resolveConfig`, `cachePrefix`, `DEFAULT_STATIC_EXTENSIONS`, `DEFAULT_PURGE_MESSAGE_TYPE`, `DEFAULT_HASHED_ASSET_PATTERN`
 
 ## License
 

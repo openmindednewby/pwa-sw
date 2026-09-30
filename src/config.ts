@@ -7,7 +7,9 @@
  * names/versions, which API paths are public (cacheable), the purge message
  * type, and the static-asset extensions.
  */
-export interface ServiceWorkerConfig {
+import { resolveFreshness, type FreshnessOptions, type ResolvedFreshness } from './freshness';
+
+export interface ServiceWorkerConfig extends FreshnessOptions {
   /**
    * Cache name for cached public-API (network-first) responses, e.g.
    * `public-menu-api-v2`. BUMP the version suffix on a deploy that should evict
@@ -112,7 +114,7 @@ export function joinScope(scope: string, file: string): string {
  * A resolved config with all optionals filled in. Used internally by the
  * generator so the emitted SW never depends on undefined values.
  */
-export interface ResolvedServiceWorkerConfig {
+export interface ResolvedServiceWorkerConfig extends ResolvedFreshness {
   apiCacheName: string;
   staticCacheName: string;
   publicApiPathMatchers: string[];
@@ -137,8 +139,9 @@ export function resolveConfig(config: ServiceWorkerConfig): ResolvedServiceWorke
   if (!config.staticCacheName || config.staticCacheName.trim() === '') {
     throw new Error('pwa-sw: staticCacheName is required');
   }
-  if (!Array.isArray(config.publicApiPathMatchers) || config.publicApiPathMatchers.length === 0) {
-    throw new Error('pwa-sw: publicApiPathMatchers must contain at least one path substring');
+  const matchers = config.publicApiPathMatchers;
+  if (!Array.isArray(matchers) || (matchers.length === 0 && config.staticOnly !== true)) {
+    throw new Error('pwa-sw: publicApiPathMatchers must contain at least one path substring (or set staticOnly)');
   }
   // `x?.trim() || fallback` collapses the undefined AND empty-string cases into
   // one expression (keeps the cognitive-complexity of resolveConfig in budget).
@@ -168,6 +171,7 @@ export function resolveConfig(config: ServiceWorkerConfig): ResolvedServiceWorke
     swUrl,
     updateCheckIntervalMs,
     reloadOnControllerChange,
+    ...resolveFreshness(config, joinScope(scope, 'sw-register.js'), reloadOnControllerChange),
   };
 }
 
