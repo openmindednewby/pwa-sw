@@ -26,8 +26,25 @@ function reloadListenerSource(resolved: ResolvedServiceWorkerConfig): string {
     if (!hadController) { hadController = true; return; }
     if (refreshing) return;
     refreshing = true;
-    window.location.reload();
+    (window.__gsWhenIdle || run)(reload);
   });
+`;
+}
+
+/**
+ * The shared reload helpers, or '' when neither reload path is emitted. A page that
+ * installs `window.__gsWhenIdle(fn)` (e.g. @dloizides/game-shell) decides WHEN the
+ * reload runs, so an update never reloads a game mid-play; without it, `run` reloads now.
+ */
+function reloadHelpersSource(resolved: ResolvedServiceWorkerConfig): string {
+  if (!resolved.reloadOnControllerChange && !resolved.selfHeal) {
+    return '';
+  }
+  return `
+  // Reloads go through window.__gsWhenIdle when the page installs one (a game
+  // defers them until the player is idle); otherwise they run immediately.
+  const run = function (fn) { fn(); };
+  const reload = function () { window.location.reload(); };
 `;
 }
 
@@ -64,7 +81,7 @@ export function generateRegistration(config: ServiceWorkerConfig): string {
   // Reload-on-controllerchange is OMITTED entirely when disabled — an app that
   // registers a SECOND worker at the same scope (e.g. a push-notifications SW)
   // would otherwise reload-loop as the two workers hand control back and forth.
-  const reloadBlock = reloadListenerSource(resolved);
+  const reloadBlock = reloadHelpersSource(resolved) + reloadListenerSource(resolved);
   const healBlock = selfHealSource(resolved);
   const healCall = resolved.selfHeal ? `
           verifyActiveVersion();` : '';

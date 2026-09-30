@@ -98,6 +98,12 @@ worker does not answer (a legacy hand-written SW), the snippet unregisters the w
 covers the page, deletes all caches and reloads ONCE. A `sessionStorage` key per page build
 prevents a loop. The page build is the stamped version, or `<meta name="pwa-build-version">`.
 
+**Deferred reloads** (1.6.0): both reloads (the `controllerchange` hand-off and the self-heal)
+call `(window.__gsWhenIdle || run)(reload)`. If the page defines `window.__gsWhenIdle(fn)` —
+`@dloizides/game-shell`'s `initGameShell` does — that function decides when `fn` runs, so an
+update never reloads a game mid-play. The snippet has no idle logic of its own; with no global it
+reloads immediately, exactly as before.
+
 **Retiring an old worker URL** (`retireWorkerUrls`, 1.5.0): moving from a hand-written worker at
 `/sw.js` to `/service-worker.js` strands returning players. The old worker keeps answering
 navigations from its cache with the OLD page, which never loads `sw-register.js`, and a 404 on the

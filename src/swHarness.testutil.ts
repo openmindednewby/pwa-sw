@@ -161,6 +161,8 @@ export interface PageOptions {
   hasController?: boolean;
   metaVersion?: string;
   storage?: Record<string, string>;
+  /** Installed as `window.__gsWhenIdle` (the game-shell idle gate) when given. */
+  whenIdle?: jest.Mock;
 }
 
 export interface PageEnv {
@@ -171,6 +173,7 @@ export interface PageEnv {
   foreignUnregister: jest.Mock;
   storage: Map<string, string>;
   asks: () => number;
+  controllerChange: () => void;
 }
 
 const COMPRESSED_TIMER_MS = 1;
@@ -189,6 +192,7 @@ export function loadPage(source: string, options: PageOptions = {}): PageEnv {
   const versions = options.controllerVersions ?? [];
   let askCount = 0;
   let loadHandler: (() => void) | undefined;
+  const swListeners: Array<() => void> = [];
 
   const controller = {
     postMessage: (_msg: unknown, ports: Port[]): void => {
@@ -204,7 +208,7 @@ export function loadPage(source: string, options: PageOptions = {}): PageEnv {
   const navigatorFake = {
     serviceWorker: {
       controller: options.hasController === false ? null : controller,
-      addEventListener: jest.fn(),
+      addEventListener: (_type: string, fn: () => void): number => swListeners.push(fn),
       register: jest.fn(() => Promise.resolve(registration)),
       getRegistrations: jest.fn(() => Promise.resolve([registration, foreign])),
     },
@@ -216,6 +220,7 @@ export function loadPage(source: string, options: PageOptions = {}): PageEnv {
       }
     },
     location: { reload, href: 'https://game.test/index.html' },
+    __gsWhenIdle: options.whenIdle,
   };
   const documentFake = {
     querySelector: (): { getAttribute: () => string } | null =>
@@ -252,6 +257,7 @@ export function loadPage(source: string, options: PageOptions = {}): PageEnv {
     foreignUnregister,
     storage,
     asks: (): number => askCount,
+    controllerChange: (): void => swListeners.forEach((fn) => fn()),
   };
 }
 

@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.6.0
+- Both reloads in `sw-register.js` (the `controllerchange` hand-off and the zombie self-heal) now run through `(window.__gsWhenIdle || run)(reload)`. A page that installs `window.__gsWhenIdle(fn)` (`@dloizides/game-shell`) decides when the reload happens, so an update never reloads a game mid-play. With no global the reload runs immediately, as before. The `refreshing` guard still limits the `controllerchange` path to one hand-off per page load.
+
 ## 1.5.0
 - `retireWorkerUrls` (e.g. `['/sw.js']`): `pwa-sw-gen` writes a kill-switch worker at each retired worker URL. It skips waiting on install; on activate it deletes every cache, unregisters itself and navigates each controlled window once. Fixes players stuck on an old worker at a URL that now 404s (a 404 on the update check does not unregister a worker, and its cached page never loads `sw-register.js`). The old URL must keep being served with `Cache-Control: no-cache`. Also exported: `generateRetireWorker()`, `retireWorkerFiles(config)`.
 

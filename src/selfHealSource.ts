@@ -68,7 +68,7 @@ export function selfHealSource(resolved: ResolvedServiceWorkerConfig): string {
       })
       .then(function () { return caches.keys(); })
       .then(function (names) { return Promise.all(names.map(function (n) { return caches.delete(n); })); })
-      .then(function () { window.location.reload(); return true; });
+      .then(function () { (window.__gsWhenIdle || run)(reload); return true; });
   };
 
   const verifyActiveVersion = function () {
