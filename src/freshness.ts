@@ -30,6 +30,11 @@ export interface FreshnessOptions {
    */
   registrationUrl?: string;
   /**
+   * `true`: the worker fetches `registrationUrl` with `cache: 'no-store'` and serves the
+   * per-build cached copy only when the network fails. Default `false`: never intercepted.
+   */
+  serveRegistrationOffline?: boolean;
+  /**
    * Zombie self-heal in the registration snippet: if the worker controlling the
    * page still reports a different build than the page after the grace period,
    * unregister it, clear caches and reload ONCE (guarded per page build).
@@ -52,6 +57,7 @@ export interface ResolvedFreshness {
   unhashedPathMatchers: string[];
   staticOnly: boolean;
   registrationUrl: string;
+  serveRegistrationOffline: boolean;
   selfHeal: boolean;
   selfHealGraceMs: number;
 }
@@ -101,6 +107,7 @@ export function resolveFreshness(
     unhashedPathMatchers: options.unhashedPathMatchers ?? [],
     staticOnly: options.staticOnly ?? false,
     registrationUrl: options.registrationUrl?.trim() || defaultRegistrationUrl,
+    serveRegistrationOffline: options.serveRegistrationOffline ?? false,
     selfHeal: options.selfHeal ?? reloadOnControllerChange,
     selfHealGraceMs,
   };

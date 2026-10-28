@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.7.0
+- `serveRegistrationOffline` (opt-in, default `false`): the worker fetches `sw-register.js` (`registrationUrl`) with `cache: 'no-store'`, so online it is always fresh as before, and serves the per-build cached copy only when the network fails. This removes the failed `sw-register.js` fetch on an offline load. The worker script itself is still never intercepted. The cached copy lives in the build's static cache, which activate purges, so a later build never gets an old snippet. With the option unset the snippet is bypassed exactly as in 1.6.0.
+
 ## 1.6.0
 - Both reloads in `sw-register.js` (the `controllerchange` hand-off and the zombie self-heal) now run through `(window.__gsWhenIdle || run)(reload)`. A page that installs `window.__gsWhenIdle(fn)` (`@dloizides/game-shell`) decides when the reload happens, so an update never reloads a game mid-play. With no global the reload runs immediately, as before. The `refreshing` guard still limits the `controllerchange` path to one hand-off per page load.
 

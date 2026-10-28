@@ -137,3 +137,49 @@ describe('generated worker: HTML detection and offline shell', () => {
     expect(await bodyOf(await dispatchFetch(env, `${ORIGIN}/level/3`, 'navigate'))).toBe('v1');
   });
 });
+
+describe('generated worker: serveRegistrationOffline', () => {
+  const registrationUrl = `${ORIGIN}/app/sw-register.js`;
+
+  it('with the option unset and the network down, leaves the registration snippet to the browser', async () => {
+    const s = server();
+    const env = loadWorker(generateServiceWorker({ ...base, scope: '/app/' }), s.impl);
+    await dispatchFetch(env, registrationUrl);
+    s.offline();
+
+    const response = await dispatchFetch(env, registrationUrl);
+
+    expect(response).toBeUndefined();
+  });
+
+  it('with the option on and the network up, fetches the snippet with no-store', async () => {
+    const s = server();
+    const env = loadWorker(generateServiceWorker({ ...base, scope: '/app/', serveRegistrationOffline: true }), s.impl);
+    await bodyOf(await dispatchFetch(env, registrationUrl));
+    s.deploy('v2');
+
+    const body = await bodyOf(await dispatchFetch(env, registrationUrl));
+
+    expect(body).toBe('v2');
+    expect(env.fetch.mock.calls[1]?.[1]).toEqual({ cache: 'no-store' });
+  });
+
+  it('with the option on and the network down, serves the cached snippet', async () => {
+    const s = server();
+    const env = loadWorker(generateServiceWorker({ ...base, scope: '/app/', serveRegistrationOffline: true }), s.impl);
+    await bodyOf(await dispatchFetch(env, registrationUrl));
+    s.offline();
+
+    const body = await bodyOf(await dispatchFetch(env, registrationUrl));
+
+    expect(body).toBe('v1');
+  });
+
+  it('with the option on, still never intercepts the worker script', async () => {
+    const env = loadWorker(generateServiceWorker({ ...base, scope: '/app/', serveRegistrationOffline: true }), server().impl);
+
+    const response = await dispatchFetch(env, `${ORIGIN}/app/service-worker.js`);
+
+    expect(response).toBeUndefined();
+  });
+});
