@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.7.1
+- Fix: an open tab loaded WITHOUT a controller while a worker was already active (a hard reload, Ctrl+Shift+R, or DevTools bypass) never reloaded onto a new deploy: the `controllerchange` from the new build was swallowed as if it were the first install. `sw-register.js` now treats a worker that is active when registration resolves as "already controlled", so that hand-off reloads once. The first-visit install still does not reload.
+
 ## 1.7.0
 - `serveRegistrationOffline` (opt-in, default `false`): the worker fetches `sw-register.js` (`registrationUrl`) with `cache: 'no-store'`, so online it is always fresh as before, and serves the per-build cached copy only when the network fails. This removes the failed `sw-register.js` fetch on an offline load. The worker script itself is still never intercepted. The cached copy lives in the build's static cache, which activate purges, so a later build never gets an old snippet. With the option unset the snippet is bypassed exactly as in 1.6.0.
 

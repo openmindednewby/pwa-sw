@@ -159,6 +159,7 @@ export interface PageOptions {
   /** Versions the controlling worker answers with, one per ask (last repeats). `null` = never answers. */
   controllerVersions?: Array<string | null>;
   hasController?: boolean;
+  activeWorker?: boolean;
   metaVersion?: string;
   storage?: Record<string, string>;
   /** Installed as `window.__gsWhenIdle` (the game-shell idle gate) when given. */
@@ -203,7 +204,7 @@ export function loadPage(source: string, options: PageOptions = {}): PageEnv {
       }
     },
   };
-  const registration = { scope: 'https://game.test/', unregister, update: jest.fn() };
+  const registration = { scope: 'https://game.test/', unregister, update: jest.fn(), active: options.activeWorker === true ? {} : null };
   const foreign = { scope: 'https://game.test/other-app/', unregister: foreignUnregister, update: jest.fn() };
   const navigatorFake = {
     serviceWorker: {
