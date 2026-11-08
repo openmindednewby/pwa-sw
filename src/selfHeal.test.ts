@@ -30,6 +30,17 @@ describe('zombie service-worker self-heal', () => {
     expect(page.storage.get('pwa-sw-heal:build-2')).toBe('1');
   });
 
+  it('with a preserved cache prefix, keeps that cache and deletes the others', async () => {
+    const preserving = generateRegistration({ ...base, preservedCachePrefixes: ['device-model-'] });
+    const page = loadPage(preserving, { controllerVersions: ['build-1'] });
+    await page.caches.open('device-model-v1');
+
+    page.start();
+    await settle();
+
+    expect([...page.caches.caches.keys()]).toEqual(['device-model-v1']);
+  });
+
   it('heals a legacy worker that does not answer the version request', async () => {
     const page = loadPage(source, { controllerVersions: [null] });
     page.start();

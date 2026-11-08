@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.8.0
+- `preservedCachePrefixes` (optional, default none): cache names starting with one of these prefixes survive the zombie self-heal in `sw-register.js` and the `retireWorkerUrls` kill-switch. A large file a user downloads once (the `dloizides-bg-removal-` model cache, about 54 MB) no longer downloads again after a heal. With the option unset both still delete every cache.
+
 ## 1.7.1
 - Fix: an open tab loaded WITHOUT a controller while a worker was already active (a hard reload, Ctrl+Shift+R, or DevTools bypass) never reloaded onto a new deploy: the `controllerchange` from the new build was swallowed as if it were the first install. `sw-register.js` now treats a worker that is active when registration resolves as "already controlled", so that hand-off reloads once. The first-visit install still does not reload.
 

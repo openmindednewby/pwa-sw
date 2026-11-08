@@ -1,5 +1,6 @@
 import type { ResolvedServiceWorkerConfig } from './config';
 import { BUILD_VERSION_META_NAME, HEAL_GUARD_KEY_PREFIX, VERSION_REQUEST_TYPE } from './freshness';
+import { cachesToDeleteSource } from './preservedCaches';
 
 const VERSION_REPLY_TIMEOUT_MS = 3000;
 
@@ -19,6 +20,7 @@ export function selfHealSource(resolved: ResolvedServiceWorkerConfig): string {
   const VERSION_REQUEST_TYPE = ${json(VERSION_REQUEST_TYPE)};
   const HEAL_GRACE_MS = ${resolved.selfHealGraceMs};
   const VERSION_REPLY_TIMEOUT_MS = ${VERSION_REPLY_TIMEOUT_MS};
+  ${cachesToDeleteSource(resolved.preservedCachePrefixes)}
 
   const readPageVersion = function () {
     const meta = document.querySelector('meta[name=${json(BUILD_VERSION_META_NAME)}]');
@@ -67,7 +69,7 @@ export function selfHealSource(resolved: ResolvedServiceWorkerConfig): string {
           .map(function (r) { return r.unregister(); }));
       })
       .then(function () { return caches.keys(); })
-      .then(function (names) { return Promise.all(names.map(function (n) { return caches.delete(n); })); })
+      .then(function (names) { return Promise.all(cachesToDelete(names).map(function (n) { return caches.delete(n); })); })
       .then(function () { (window.__gsWhenIdle || run)(reload); return true; });
   };
 

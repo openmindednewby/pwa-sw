@@ -84,6 +84,8 @@ export interface ServiceWorkerConfig extends FreshnessOptions {
    * the old worker) with `Cache-Control: no-cache`. Must sit inside `scope`.
    */
   retireWorkerUrls?: string[];
+  /** Cache-name prefixes the self-heal and the retire worker never delete, e.g. a model downloaded once. Defaults to none. */
+  preservedCachePrefixes?: string[];
 }
 
 /** Default static-asset extensions (cache-first). */
@@ -135,6 +137,7 @@ export interface ResolvedServiceWorkerConfig extends ResolvedFreshness {
   swUrl: string;
   updateCheckIntervalMs: number;
   reloadOnControllerChange: boolean;
+  preservedCachePrefixes: string[];
 }
 
 /**
@@ -181,6 +184,7 @@ export function resolveConfig(config: ServiceWorkerConfig): ResolvedServiceWorke
     swUrl,
     updateCheckIntervalMs,
     reloadOnControllerChange,
+    preservedCachePrefixes: config.preservedCachePrefixes ?? [],
     ...resolveFreshness(config, joinScope(scope, 'sw-register.js'), reloadOnControllerChange),
   };
 }

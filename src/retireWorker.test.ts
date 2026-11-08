@@ -31,6 +31,17 @@ describe('retired worker kill-switch', () => {
     expect(tab.navigate).toHaveBeenCalledWith('https://game.test/index.html');
   });
 
+  it('with a preserved cache prefix, keeps that cache and deletes the others', async () => {
+    const [retired] = retireWorkerFiles({ ...base, retireWorkerUrls: ['/sw.js'], preservedCachePrefixes: ['device-model-'] });
+    const env = loadWorker(retired?.source ?? '', offline);
+    await env.caches.open('device-model-v1');
+    await env.caches.open('legacy-game-cache-v3');
+
+    await dispatchActivate(env);
+
+    expect([...env.caches.caches.keys()]).toEqual(['device-model-v1']);
+  });
+
   it('unregisters before navigating, so the reloaded page is not controlled by it', async () => {
     const order: string[] = [];
     const tab = fakeWindowClient('https://game.test/');
