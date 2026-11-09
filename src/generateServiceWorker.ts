@@ -80,7 +80,7 @@ const HASHED_ASSET_PATTERN = new RegExp(${json(resolved.hashedAssetPattern)});
 const UNHASHED_PATH_MATCHERS = ${json(resolved.unhashedPathMatchers)};
 const BYPASS_PATHS = ${json(bypassPaths)};
 const OFFLINE_REGISTRATION_PATH = ${json(offlineRegistrationPath)};
-const SHELL_URL = ${json(resolved.scope)};
+const SHELL_URL = ${json(resolved.shellUrl)};
 const VERSION_REQUEST_TYPE = ${json(VERSION_REQUEST_TYPE)};
 const VERSION_REPLY_TYPE = ${json(VERSION_REPLY_TYPE)};
 

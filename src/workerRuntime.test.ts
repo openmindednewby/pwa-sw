@@ -136,6 +136,16 @@ describe('generated worker: HTML detection and offline shell', () => {
     s.offline();
     expect(await bodyOf(await dispatchFetch(env, `${ORIGIN}/level/3`, 'navigate'))).toBe('v1');
   });
+
+  it('serves the configured shell, not the scope root, for an uncached page when offline', async () => {
+    const s = server();
+    const env = loadWorker(generateServiceWorker({ ...base, shellUrl: '/make' }), s.impl);
+    await bodyOf(await dispatchFetch(env, `${ORIGIN}/make`, 'navigate'));
+    s.deploy('v2');
+    await bodyOf(await dispatchFetch(env, `${ORIGIN}/`, 'navigate'));
+    s.offline();
+    expect(await bodyOf(await dispatchFetch(env, `${ORIGIN}/tracker`, 'navigate'))).toBe('v1');
+  });
 });
 
 describe('generated worker: serveRegistrationOffline', () => {

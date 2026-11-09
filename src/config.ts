@@ -50,6 +50,8 @@ export interface ServiceWorkerConfig extends FreshnessOptions {
    * path), e.g. `/app/`. Defaults to `/`. Used only by `generateRegistration`.
    */
   scope?: string;
+  /** The cached page an uncached navigation falls back to offline. Defaults to `scope`; set it when the scope root is not the app, e.g. a marketing home. */
+  shellUrl?: string;
   /**
    * The URL the SW is served from, e.g. `/app/service-worker.js`. Defaults to
    * `<scope>service-worker.js`. Used only by `generateRegistration`.
@@ -134,6 +136,7 @@ export interface ResolvedServiceWorkerConfig extends ResolvedFreshness {
   staticExtensions: string[];
   buildVersion: string;
   scope: string;
+  shellUrl: string;
   swUrl: string;
   updateCheckIntervalMs: number;
   reloadOnControllerChange: boolean;
@@ -181,6 +184,7 @@ export function resolveConfig(config: ServiceWorkerConfig): ResolvedServiceWorke
     staticExtensions,
     buildVersion,
     scope,
+    shellUrl: config.shellUrl?.trim() || scope,
     swUrl,
     updateCheckIntervalMs,
     reloadOnControllerChange,

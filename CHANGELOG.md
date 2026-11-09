@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.9.0
+- `shellUrl` (optional, default `scope`): the cached page an uncached navigation falls back to offline. For an app whose scope root is a marketing home rather than the app. With the option unset the fallback stays the scope root.
+
 ## 1.8.0
 - `preservedCachePrefixes` (optional, default none): cache names starting with one of these prefixes survive the zombie self-heal in `sw-register.js` and the `retireWorkerUrls` kill-switch. A large file a user downloads once (the `dloizides-bg-removal-` model cache, about 54 MB) no longer downloads again after a heal. With the option unset both still delete every cache.
 
