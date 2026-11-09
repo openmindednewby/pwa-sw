@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.10.0
+- With `shellUrl` set, the worker precaches it into the static cache during install, so an unvisited page opens offline after the first visit to any page. A failed fetch, an error status or a redirected response caches nothing and never fails the install. With `shellUrl` unset the install is unchanged.
+
 ## 1.9.0
 - `shellUrl` (optional, default `scope`): the cached page an uncached navigation falls back to offline. For an app whose scope root is a marketing home rather than the app. With the option unset the fallback stays the scope root.
 

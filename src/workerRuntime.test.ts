@@ -1,6 +1,6 @@
 import { generateServiceWorker } from './generateServiceWorker';
 import { unityWebGLPreset } from './presets';
-import { dispatchActivate, dispatchFetch, dispatchMessage, loadWorker, type FetchImpl } from './swHarness.testutil';
+import { dispatchActivate, dispatchFetch, dispatchInstall, dispatchMessage, loadWorker, type FetchImpl } from './swHarness.testutil';
 
 const ORIGIN = 'https://game.test';
 const base = {
@@ -146,6 +146,59 @@ describe('generated worker: HTML detection and offline shell', () => {
     await bodyOf(await dispatchFetch(env, `${ORIGIN}/`, 'navigate'));
     s.offline();
     expect(await bodyOf(await dispatchFetch(env, `${ORIGIN}/tracker`, 'navigate'))).toBe('shell');
+  });
+});
+
+describe('generated worker: shellUrl precache on install', () => {
+  const staticCache = 'static-assets-v1-build-2';
+
+  it('with shellUrl set and no earlier navigation, serves the shell for an unvisited page offline', async () => {
+    const s = server();
+    const env = loadWorker(generateServiceWorker({ ...base, shellUrl: '/make' }), s.impl);
+    s.deploy('shell');
+    await dispatchInstall(env);
+    s.offline();
+
+    const body = await bodyOf(await dispatchFetch(env, `${ORIGIN}/tracker`, 'navigate'));
+
+    expect(body).toBe('shell');
+  });
+
+  it('with the shell fetch failing, still completes the install and skips waiting', async () => {
+    const s = server();
+    const env = loadWorker(generateServiceWorker({ ...base, shellUrl: '/make' }), s.impl);
+    s.offline();
+
+    await dispatchInstall(env);
+
+    expect(env.self.skipWaiting).toHaveBeenCalledTimes(1);
+  });
+
+  it('with shellUrl unset, fetches nothing during install', async () => {
+    const env = loadWorker(generateServiceWorker(base), server().impl);
+
+    await dispatchInstall(env);
+
+    expect(env.fetch).not.toHaveBeenCalled();
+  });
+
+  it('with a server error for the shell, caches nothing', async () => {
+    const impl: FetchImpl = () => Promise.resolve(new Response('error', { status: 500 }));
+    const env = loadWorker(generateServiceWorker({ ...base, shellUrl: '/make' }), impl);
+
+    await dispatchInstall(env);
+
+    expect((await env.caches.open(staticCache)).store.size).toBe(0);
+  });
+
+  it('with a redirected shell response, caches nothing because a navigation cannot use it', async () => {
+    const redirected = Object.defineProperty(new Response('shell'), 'redirected', { value: true });
+    const impl: FetchImpl = () => Promise.resolve(redirected);
+    const env = loadWorker(generateServiceWorker({ ...base, shellUrl: '/make' }), impl);
+
+    await dispatchInstall(env);
+
+    expect((await env.caches.open(staticCache)).store.size).toBe(0);
   });
 });
 
